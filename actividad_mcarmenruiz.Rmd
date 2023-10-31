@@ -36,7 +36,7 @@ Para poder usar el paquete mongolite debemos instalarlo previamente con el coman
 
 
 ```{r}
-
+#install.packages("mongolite")
 
 library(mongolite)
 
@@ -162,6 +162,7 @@ Exploremos otro diagrama de barras con una colección diferente - inspections. E
 
 print("Completar Tarea 1")
 
+inspecciones_edificios_nueva_york = mongo(collection="inspections", db="sample_training", url=cadena_conexion, options = opciones_conexion)
 
 
 
