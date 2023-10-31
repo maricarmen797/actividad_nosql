@@ -162,10 +162,18 @@ Exploremos otro diagrama de barras con una colección diferente - inspections. E
 
 print("Completar Tarea 1")
 
-inspecciones_edificios_nueva_york = mongo(collection="inspections", db="sample_training", url=cadena_conexion, options = opciones_conexion)
+inspecciones_edificios_nueva_york = mongo(collection="inspections", db="sample_training", url=cadena_conexion, options = opciones_conexion)    # recopilamos los datos en la variable inspecciones_edificios_nueva_york
 
 
+inspecciones_edificios_nueva_york$count()  #verificamos el número de documentos en la base de datos 
 
+inspecciones_edificios_nueva_york$iterate()$one() #examinamos la estructura de datos de esta colección
+
+inspecciones_edificios_nueva_york$find(sort = '{"certificate_number" : -1}' , limit = 5) # cogemos una muestra ordenando por número de certificado
+
+# veamos la distribución de los resultados de las inspecciones de los edificios, si la pasan o no
+distribucion_inspecciones = inspecciones_edificios_nueva_york$aggregate('[{"$group":{"_id":"$result", "Count": {"$sum":1}}}]')
+distribucion_inspecciones
 ```
 
 
