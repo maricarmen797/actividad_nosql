@@ -1,0 +1,219 @@
+---
+title: "Práctica Big Data con Mongo DB"
+author: "María del Carmen Ruiz Gil"
+date: "2023-10-31"
+output:
+  html_document:
+    fig_caption: yes
+  pdf_document: default---
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Introducción
+
+En esta práctica se verá como R puede ser utilizado para conectarnos a una base de datos NoSQL. En particular Mongo DB.Para la realización de la práctica se utilizará Atlas un servicio en la nube gratuito para manegar bases de datos Mongo DB. MongoDB Atlas es fácil de configurar y tiene conjuntos de datos de muestra para ejemplos de R con Mongo DB. Puede cargar conjuntos de datos de muestra usando el "..." junto al botón de colecciones en la página de su clúster. No obstante, aunque se puede crear un clúster específico en Atlas, esta práctica parte de uno ya creado y que puede ser utilizado para la resolución de los ejercicios.
+
+* Adicionalmente, se recomienda utilizar un cliente Mongo DB para conectarse a la base de datos e inspeccionar los datos contenidos. Esto será extemadamente útil para realizar las consultas. Puede considerarse Robo 3T (https://robomongo.org/download). Además, si se crea el propio cluster en Atlas, este tiene una interfaz amigable para inspeccionar los datos.
+
+* Además de estas funciones, existe documentación de las colecciones y la información contenida en esta base de datos de ejemplo en https://docs.atlas.mongodb.com/sample-data/sample-training/
+
+* Para la resolución de ejercicios puede consultar el [Manual de Mongo DB](https://docs.mongodb.com/manual/) que contiene ejemplos y explicación de la sintáxis de Mongo DB
+
+## Paquetes R utilizados
+
+El controlador R MongoDB preferido, mongolite, es rápido y tiene una sintaxis similar a la del shell MongoDB. Mongolite es la que se utilizará en los siguientes ejemplos. Los otros paquetes enumerados aquí no han estado tan activos en Github recientemente. Los paquetes más populares para conectar MongoDB y R son:
+
+-   **mongolite**: un controlador R MongoDB más reciente, mongolite puede realizar varias operaciones como indexación, canalizaciones de agregación, cifrado TLS y autenticación SASL, entre otras. Está basado en el paquete jsonlite para R y mongo-c-driver. Podemos instalar mongolite desde CRAN o desde RStudio (explicado en una sección posterior). RMongo: RMongo fue el primer controlador R MongoDB con una sencilla interfaz R MongoDB. Tiene una sintaxis como la del shell MongoDB. RMongo ha quedado obsoleto a partir de ahora.
+
+-   **rmongodb**: rmongodb tiene funciones para crear pipelines, manejar objetos BSON, etc. Su sintaxis es muy compleja en comparación con mongolite. Al igual que RMongo, rmongodb ha quedado obsoleto y no está disponible ni se mantiene en CRAN.
+
+# Instalación Mongolite
+
+Para poder usar el paquete mongolite debemos instalarlo previamente con el comando siguiente, además de importar la librería posteriormente
+
+
+```{r}
+
+
+library(mongolite)
+
+```
+
+# Conectarse a Mongo DB
+
+Esta es la cadena de conexión a MongoDB en Atlas. Se podría sustituir por otro servidor o clúster en Atlas si se desea. 
+
+```{r cadena_conexion}
+cadena_conexion = 'mongodb+srv://user01:user01@cluster0.mcblc3z.mongodb.net/test'
+
+
+```
+
+
+Opciones de no validación de certificados SSL. Sin esta opción puede haber error de conexión a Atlas.
+
+```{r opciones_conexion}
+opciones_conexion = ssl_options(weak_cert_validation = T)
+
+```
+
+
+Después de establecer la conexión a MongoDB se recupera la colección 'trips' usando la función mongo() en código R para obtener la colección de viajes de la base de datos sample_training. Esta recopilación contiene datos de viajes realizados por los usuarios de un servicio de bicicletas compartidas con sede en la ciudad de Nueva York.
+
+
+```{r consulta_viajes}
+
+viajes = mongo(collection="trips", db="sample_training", url=cadena_conexion, options = opciones_conexion)
+```
+
+Puede verificar que su código ahora esté conectado a la colección MongoDB verificando el número total de documentos en esta base de datos. Para hacerlo, use la función count().
+
+
+```{r verificación consulta viajes}
+
+viajes$count()
+
+```
+
+
+Ahora que tiene una conexión establecida con la base de datos, podrá leer los datos de la misma para ser procesados por R.
+
+
+# Cómo obtener datos en R desde MongoDB
+
+En esta sección, aprenderá cómo recuperar datos de MongoDB y mostrar los mismos. Continuemos con trips_collection de la sección anterior.
+
+Puede usar la interfaz de usuario de MongoDB Atlas para ver los documentos de trip_collection o RStudio para visualizarlos.
+
+Obtenga cualquier documento de muestra de la colección usando el método [$iterate().$one()](https://jeroen.github.io/mongolite/query-data.html#iterating) para examinar la estructura de los datos de esta colección.
+
+```{r visualizar un viaje}
+
+viajes$iterate()$one()
+
+```
+
+Ahora que conoce la estructura de los documentos, puede realizar consultas más avanzadas, como buscar los cinco viajes más largos a partir de los datos de recopilación de viajes. Y luego enumerar la duración en orden descendente.
+
+```{r consultar 5 viajes mas largos}
+
+viajes$find(sort = '{"tripduration" : -1}' , limit = 5)
+
+```
+
+La consulta anterior utiliza operadores de [clasificación y límite](https://jeroen.github.io/mongolite/query-data.html#sort-and-limit) para producir este conjunto de resultados.
+
+
+
+# Cómo analizar datos de MongoDB en R
+
+Para analizar MongoDB con R con más detalle, puede usar el [marco de agregación de MongoDB](https://docs.mongodb.com/manual/aggregation/). Este marco permite a los operadores crear canalizaciones de agregación que ayudan a obtener los datos exactos con una sola consulta.
+
+Suponga que desea verificar cuántos suscriptores realizaron viajes de una duración > 240 segundos y regresaron a la misma estación donde comenzaron. La consulta usa MongoDB [$expr] (https://docs.mongodb.com/manual/reference/operator/query/expr/) para comparar dos campos en el mismo documento.
+
+```{r consulta suscriptores}
+
+query = viajes$find('{"usertype":"Subscriber","tripduration":{"$gt":240},"$expr": {"$eq": ["$start station name","$end station name"]}}')
+
+
+```
+
+
+Combinando estos operadores con algún código R, también puede ver qué tipo de usuarios son más comunes: suscriptores o clientes únicos. Para ello, se puede [agrupar](https://docs.mongodb.com/manual/reference/operator/aggregation/group/) usuarios por tipo de usuario campo.
+
+
+```{r consulta suscriptores agregada}
+
+tipos_usuario = viajes$aggregate('[{"$group":{"_id":"$usertype", "Count": {"$sum":1}}}]')
+
+```
+
+
+Para comparar los resultados, puede visualizar los datos. Es conveniente convertir los datos obtenidos de mongolite en un [marco de datos](https://www.rdocumentation.org/packages/base/versions/3.6.2/topics/data.frame) y usar [ggplot2](https://ggplot2.tidyverse.org/) para trazar.
+
+
+```{r visualizar consulta suscriptores}
+
+library(tidyverse)
+library(lubridate)
+library(ggplot2)
+
+df <- as.data.frame(tipos_usuario)
+
+ggplot(df,aes(x=reorder(`_id`,Count),y=Count))+
+geom_bar(stat="identity",color='blue',fill='#aaaaff')+geom_text(aes(label = Count), color = "black") +coord_flip()+xlab("Tipo Usuario")
+
+```
+
+
+
+# Tarea a realizar
+
+A continuación se proponen 4 ejercicios a completar. Se recomienda completaros en script markdown de R que se proporciona.
+
+## Tarea 1
+
+Exploremos otro diagrama de barras con una colección diferente - inspections. Esta recopilación contiene datos sobre las inspecciones de edificios de la ciudad de Nueva York y si pasan o no. Recupere dicha colección en R.
+
+```{r Tarea 1}
+
+print("Completar Tarea 1")
+
+
+
+
+```
+
+
+## Tarea 2
+
+Suponga que desea verificar el número de empresas que no aprobaron las inspecciones en 2015 en comparación con 2016.
+
+Si ve los datos obtenidos de la colección, notará que el campo de fecha es una Cadena. Convertirlo en tipo de fecha y luego extraer el año requerirá algún procesamiento. Pero, con la canalización de agregación de Mongodb, puede hacer todo en una sola consulta. Para manipular el campo de fecha, use el operador [$addFields](https://docs.mongodb.com/manual/reference/operator/aggregation/addFields/).
+
+Además, agrege las deficiencias encontradas en las inspecciones por año
+
+```{r Tarea 2}
+
+print("Completar Tarea 2")
+
+
+
+
+
+
+```
+
+
+## Tarea 3
+
+Teniendo en cuenta que el resultado de la tarea anterior está agrupando los resultados por año, cree un gráfico de barras.
+
+```{r Tarea 3}
+
+print("Completar Tarea 3")
+
+
+
+
+
+```
+
+
+## Tarea 4
+
+A continuación, se utilizará la colección 'companies', que contiene información sobre empresas, como su año de fundación y la dirección de su sede.
+
+Supongamos que desea conocer la tendencia del número de empresas de publicidad (category_code = 'advertising') fundadas a partir de 2000 en adelante. Para ello, utilice el operador relacional [$gt](https://docs.mongodb.com/manual/reference/operator/query/gt/), agrupe los resultados por año de creación ('founded_year') y ordénelos para que se muestren posterioremente en un gráfico de líneas por año. 
+
+```{r Tarea 4}
+
+print("Completar Tarea 4")
+
+
+
+
+```
