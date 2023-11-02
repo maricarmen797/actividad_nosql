@@ -160,7 +160,7 @@ Exploremos otro diagrama de barras con una colección diferente - inspections. E
 
 ```{r Tarea 1}
 
-print("Completar Tarea 1")
+print("Completamos la Tarea 1")
 
 inspecciones_edificios_nueva_york = mongo(collection="inspections", db="sample_training", url=cadena_conexion, options = opciones_conexion)    # recopilamos los datos en la variable inspecciones_edificios_nueva_york
 
@@ -169,17 +169,23 @@ inspecciones_edificios_nueva_york$count()  #verificamos el número de documentos
 
 inspecciones_edificios_nueva_york$iterate()$one() #examinamos la estructura de datos de esta colección
 
-inspecciones_edificios_nueva_york$find(sort = '{"certificate_number" : -1}' , limit = 5) # cogemos una muestra ordenando por número de certificado
+inspecciones_edificios_nueva_york$find(sort = '{"certificate_number" : -1}' , limit = 5) # cogemos una muestra ordenanda por número de certificado (descendente)
 
-# veamos la distribución de los resultados de las inspecciones de los edificios, si la pasan o no
-distribucion_inspecciones = inspecciones_edificios_nueva_york$aggregate('[{"$group":{"_id":"$result", "Count": {"$sum":1}}}]')
+# Tras ver la estructura de los datos y una muestra de estos datos (aunque no se pidiese en el ejercicio, nos ayuda a ver como son los datos), veamos la distribución de los resultados de las inspecciones de los edificios: 
+
+print("Distribución de los resultados de las inspecciones a los edificios")
+
+distribucion_inspecciones = inspecciones_edificios_nueva_york$aggregate('[{"$group":{"_id":"$result", "Count": {"$sum":1}}}]') #obtenemos la distribución pedida
+
 distribucion_inspecciones
+
+print("Diagrama de barras que nos muestra la distribución de los resultados de las inspecciones en los edificios")
 
 # Hacemos una gráfica con los resultados de las inspecciones
 result_inspec <- as.data.frame(distribucion_inspecciones)
 
 ggplot(result_inspec,aes(x=reorder(`_id`,Count),y=Count))+
-geom_bar(stat="identity",color='blue',fill='#aaaaff')+geom_text(aes(label = Count), color = "black") +coord_flip()+xlab("Resultado inspección")
+geom_bar(stat="identity",color='blue',fill='#aaaaff')+geom_text(aes(label = Count), color = "black") +coord_flip()+xlab("Resultado inspección")+labs(title="Distribución de los resultados de las inspecciones")+ylab("Recuento")
 ```
 
 
@@ -194,6 +200,8 @@ Además, agrege las deficiencias encontradas en las inspecciones por año
 ```{r Tarea 2}
 
 print("Completar Tarea 2")
+
+print("Comenzemos obteniendo el número de inspecciones que se hicieron en los edificios en cada año:")
 
 inspecciones_edificios_nueva_york$aggregate('[
                                             {
@@ -219,6 +227,8 @@ inspecciones_edificios_nueva_york$aggregate('[
   }
 ]')
 
+
+print("Ahora, obtengamos la distribución de los resultados de las inspecciones distinguiendo por año")
 
 resultado = inspecciones_edificios_nueva_york$aggregate('[
                                             {
@@ -260,6 +270,8 @@ Teniendo en cuenta que el resultado de la tarea anterior está agrupando los res
 ```{r Tarea 3}
 print("Completar Tarea 3")
 
+print("Como la tabla creada en la tarea 2 es difícil de interpretar, hagamos ahora un gráfico en el que podemos ver mejor los resultados obtenidos, distinguiendo por año y resultado de la inspección")
+
 # Hacemos una gráfica con los resultados de las inspecciones por año
 result_año_inspec <- as.data.frame(resultado)
 
@@ -268,14 +280,14 @@ result_año_inspec <- as.data.frame(resultado)
 # ggplot(aes(x=reorder(`_id`$result, Count),y=Count))+
 # geom_bar(stat="identity",color='blue',fill='#aaaaff')+geom_text(aes(label = Count), color = "black") +coord_flip()+xlab("Resultado inspección")
 
-result_año_inspec %>%
-ggplot(aes(x=reorder(`_id`$result, Count),y=Count, group=`_id`$año_fecha, color=`_id`$año_fecha))+
-geom_bar(stat="identity")+geom_text(aes(label = Count), color = "black") +coord_flip()+xlab("Resultado inspección") + theme(legend.position = "bottom")
-
-result_año_inspec %>%
-ggplot(aes(x=reorder(`_id`$result, Count),y=Count, group=`_id`$año_fecha, color=`_id`$año_fecha))+
-geom_bar(stat="identity") + coord_flip() + xlab("Resultado inspección") + theme(legend.position = "bottom") + guides(fill=guide_legend(title="Año"))
-
+# result_año_inspec %>%
+# ggplot(aes(x=reorder(`_id`$result, Count),y=Count, group=`_id`$año_fecha, color=`_id`$año_fecha))+
+# geom_bar(stat="identity")+geom_text(aes(label = Count), color = "black") +coord_flip()+xlab("Resultado inspección") + theme(legend.position = "bottom")
+# 
+# result_año_inspec %>%
+# ggplot(aes(x=reorder(`_id`$result, Count),y=Count, group=`_id`$año_fecha, color=`_id`$año_fecha))+
+# geom_bar(stat="identity") + coord_flip() + xlab("Resultado inspección") + theme(legend.position = "bottom") + guides(fill=guide_legend(title="Año"))
+# 
 
 result_año_inspec %>%
 ggplot(aes(x=reorder(`_id`$result, Count),y=Count, group=`_id`$año_fecha, color=`_id`$año_fecha))+
@@ -285,14 +297,9 @@ result_año_inspec %>%
 ggplot(aes(x=reorder(`_id`$result, Count),y=Count, group=`_id`$año_fecha, color=`_id`$año_fecha))+
 geom_bar(stat="identity", position = 'dodge') +coord_flip()+xlab("Resultado inspección") + theme(legend.position = "bottom")
 
+print("He creado dos gráficos, el primero de ellos contiene el número total de observaciones para cada resultado de las inspecciones, pero como nos ensucia un poco nuestro gráfico, he creado otro más en el que no se muestra el valor de los recuentos de cada resultado, pero nos deja una gráfica más clara.")
 
-# result_año_inspec %>%
-# ggplot(aes(x=Count, y=reorder(`_id`$result, Count), group=`_id`$año_fecha, color=`_id`$año_fecha))+
-# geom_bar(stat="identity")+geom_text(aes(label = Count), color = "black") +coord_flip()+xlab("Resultado inspección")
-# 
-# result_año_inspec %>%
-# ggplot(aes(x=reorder(`_id`$año_fecha, Count),y=Count, group=`_id`$result, color=`_id`$result))+
-# geom_bar(stat="identity")+geom_text(aes(label = Count), color = "black") +coord_flip()+xlab("Resultado inspección")
+
 ```
 
 
@@ -310,9 +317,60 @@ info_empresas = mongo(collection="companies", db="sample_training", url=cadena_c
 
 info_empresas$count()  #verificamos el número de documentos en la base de datos 
 
-info_empresas$iterate()$one() #examinamos la estructura de datos de esta colección
+# info_empresas$iterate()$one() #examinamos la estructura de datos de esta colección
 
-info_empresas$find(sort = '{"name" : -1}' , limit = 5) # cogemos una muestra ordenando por nombre
+# info_empresas$find(sort = '{"name" : 1}' , limit = 5) # cogemos una muestra ordenando por nombre
 
+
+print("Tras ver la estructura de los datos y una muestra de estos datos (he comentado el código ya que el resultado ocupaba mucho espacio en el documento), ya podemos calcular lo que nos pide el ejercicio:")
+                                                                  
+# empresas_agregada = info_empresas$aggregate('[
+#                            {
+#   "$match":{
+#   "category_code":"advertising",
+#   "founded_year":{"$gt":2000}
+#   }                         
+#    },
+#                            {
+#   "$group":{
+#     "_id":{
+#     "año_creación":"$founded_year"
+#     }, 
+#     "Count": {"$sum":1}
+#     }
+#   }
+# ]')
+
+
+
+empresas_agregada = info_empresas$aggregate('[
+                           {
+  "$match":{
+  "category_code":"advertising",
+  "founded_year":{"$gt":2000}
+  }                         
+   },
+                           {
+  "$group":{
+    "_id":{
+    "año_creación":"$founded_year"
+    }, 
+    "Count": {"$sum":1}
+    }
+  },
+  {
+  "$sort":{"_id":1}   
+  }
+]')
+
+empresas_agregada
+
+result_empresas_agregada <- as.data.frame(empresas_agregada)
+
+result_empresas_agregada %>%
+ggplot(aes(x=`_id`$año_creación,Count,y=Count,group = 1))+
+geom_line(stat="identity",color='blue',fill='#aaaaff') +
+geom_point()+geom_text(aes(label = Count), color = "red") +xlab("Años")+ 
+  scale_x_continuous(breaks = seq(2000, 2014, by = 1))
 
 ```
